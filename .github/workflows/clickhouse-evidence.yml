@@ -1,0 +1,57 @@
+name: clickhouse evidence (fork only, not for upstream)
+
+on:
+  workflow_dispatch:
+    inputs:
+      fix_ref:
+        description: "Branch carrying the fix"
+        required: true
+        default: fix/clickhouse-neutral-sql
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.3
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_USER: repro
+          CLICKHOUSE_PASSWORD: repro
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping"
+          --health-interval 3s --health-retries 40
+    env:
+      CH_USER: repro
+      CH_PASSWORD: repro
+    steps:
+      - name: server version and fixture data
+        run: |
+          q() { curl -sS --fail-with-body -u repro:repro "http://localhost:8123/" --data-binary "$1"; echo; }
+          q "SELECT version()"
+          q "CREATE DATABASE repro"
+          q "CREATE TABLE repro.orders (o_orderkey Int32, o_custkey Int32, o_totalprice Float64, o_orderdate Date) ENGINE = MergeTree ORDER BY o_orderkey"
+          q "CREATE TABLE repro.customer (c_custkey Int32, c_name String) ENGINE = MergeTree ORDER BY c_custkey"
+          q "INSERT INTO repro.orders VALUES (1, 10, 5.0, '2026-10-04'), (2, 10, 15.0, '2026-10-05'), (3, 20, 7.5, '2026-10-06')"
+          q "INSERT INTO repro.customer VALUES (10, 'alice'), (20, 'bob'), (30, 'carol')"
+      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v4
+        with: {ref: main, path: base}
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.fix_ref }}", path: fix}
+      - uses: actions/checkout@v4
+        with: {ref: ci-evidence, path: evidence}
+      - name: upstream main (before)
+        working-directory: base/core/wren
+        run: |
+          uv sync --locked --extra clickhouse -q
+          uv run --no-sync python ../../../evidence/repro_clickhouse.py before
+      - name: fix branch (after)
+        working-directory: fix/core/wren
+        run: |
+          uv sync --locked --extra clickhouse -q
+          uv run --no-sync python ../../../evidence/repro_clickhouse.py after
