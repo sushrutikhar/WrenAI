@@ -1,12 +1,8 @@
 name: clickhouse evidence (fork only, not for upstream)
 
 on:
-  workflow_dispatch:
-    inputs:
-      fix_ref:
-        description: "Branch carrying the fix"
-        required: true
-        default: fix/clickhouse-neutral-sql
+  push:
+    branches: [ci-evidence]
 
 permissions:
   contents: read
@@ -42,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
         with: {ref: main, path: base}
       - uses: actions/checkout@v4
-        with: {ref: "${{ inputs.fix_ref }}", path: fix}
+        with: {ref: fix/clickhouse-neutral-sql, path: fix}
       - uses: actions/checkout@v4
         with: {ref: ci-evidence, path: evidence}
       - name: upstream main (before)
