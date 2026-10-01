@@ -53,6 +53,12 @@ QUERIES = {
     "WHERE o.o_custkey = c.c_custkey) ORDER BY c.c_name",
     "not_exists": "SELECT c.c_name FROM customer AS c WHERE NOT EXISTS (SELECT 1 FROM "
     "orders AS o WHERE o.o_custkey = c.c_custkey) ORDER BY c.c_name",
+    "cume_dist_named": "SELECT o_orderkey, CUME_DIST() OVER w AS cd FROM orders "
+    "WINDOW w AS (PARTITION BY o_custkey ORDER BY o_totalprice) ORDER BY o_orderkey",
+    "lag_named": "SELECT o_orderkey, LAG(o_totalprice) OVER w AS prev FROM orders "
+    "WINDOW w AS (PARTITION BY o_custkey ORDER BY o_orderkey) ORDER BY o_orderkey",
+    "exists_count": "SELECT c.c_name FROM customer AS c WHERE EXISTS (SELECT COUNT(*) "
+    "FROM orders AS o WHERE o.o_custkey = c.c_custkey) ORDER BY c.c_name",
     "having_alias": "SELECT o_custkey, SUM(o_totalprice) AS o_totalprice FROM orders "
     "GROUP BY o_custkey HAVING SUM(o_totalprice) > 15 ORDER BY o_custkey",
 }
